@@ -221,12 +221,13 @@ void updateGhrForConditional(const uint64_t pc,
     }
     else {
         ghr.updateWithTaken(taken);
+        bdp.updateFoldedHist(ghr);
 #if 1
         static int cnt=0;
         ++cnt;
         std::cout << std::dec << cnt << ": pc=" << std::hex << (pc<<1) << " ghist=" <<  ghr.to_string() << std::endl;
+        bdp.printFoldedHist();
 #endif
-        bdp.updateFoldedHist(ghr);
     }
 }
 

@@ -32,6 +32,13 @@ namespace tage {
                               const bool is_indirect,
                               const bool ghr_enable_mallard_hash,
                               TaggedTablePredResult<PredT> &presult) const;
+        void printIdxTag(const uint64_t PC) const    {
+            std::cout << std::dec << "   " << bank_num_
+                      << std::setw(4) << " idx=" <<  calcIdx_classic_(PC)
+                      << std::hex << std::setw(8) << " t=" << calcTag_classic_(PC)
+                      << std::endl;
+
+        }
         void updateFoldedHist(const GHR &ghr);
         TaggedTableEntry<PredT> &getEntry(const uint32_t idx) { return tagged_tbl_.at(idx); }
         const TaggedTableEntry<PredT> &getEntry(const uint32_t idx) const;
@@ -40,6 +47,11 @@ namespace tage {
 
         TaggedTable(const TaggedTable&) = delete;
         TaggedTable& operator=(const TaggedTable&) = delete;
+        void printFoldedHist() const {
+            std::cout << "  " << bank_num_+1 << ".  c_i=" << std::hex <<std::setw(8) << folded_ghr_for_idx_.getValue() << std::endl;
+            std::cout << "  " << bank_num_+1 << ". c_t0=" << std::hex <<std::setw(8) << folded_ghr_for_tag_0_.getValue() << std::endl;
+            std::cout << "  " << bank_num_+1 << ". c_t1=" << std::hex <<std::setw(8) << folded_ghr_for_tag_1_.getValue() << std::endl;
+      }
 
     private:
         /**

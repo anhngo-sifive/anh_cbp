@@ -1,9 +1,3 @@
-///////////////////////////////////////////////////////////////////////
-////  Copyright 2015 Samsung Austin Semiconductor, LLC.                //
-/////////////////////////////////////////////////////////////////////////
-//
-
-
 
 #ifndef _PREDICTOR_H_
 #define _PREDICTOR_H_
@@ -102,6 +96,7 @@ public:
 
 
 
+//#define DBG
 
 int TICK;// for the reset of the u counter
 
@@ -114,12 +109,25 @@ long long phist=0;		//path history
 std::vector<folded_history> ch_i(NHIST + 1);	//utility for computing TAGE indices
 std::vector<std::vector<folded_history>> ch_t(2,std::vector<folded_history>(NHIST + 1));	//utility for computing TAGE tags
 
+
+// number of tagged tables
+#if 1
+  #define LOGB 12 // log of number of entries in bimodal predictor
+  #define NHIST 4
+  std::vector<int>  m{0,23,47,71,97}; // history lengths
+  std::vector<int>  TB{0,14,14,14,14};		// tag width for the different tagged tables
+  std::vector<int>  logg={0,9,10,10,9};		// log of number entries of the different tagged tables
+#else
+  #define LOGB 14 // log of number of entries in bimodal predictor
+  #define NHIST 12
+  std::vector<int>  m{0,8,12,18,27,40,60,90,135,203,305,459,690}; // history lengths
+  std::vector<int>  TB{0,8, 9, 9,10,10,11,11,12,12,13,13,14};		// tag width for the different tagged tables
+  std::vector<int>  logg={0,10,10,10,10,10,10,10,10,10,10,10,10};		// log of number entries of the different tagged tables
+#endif
+
 //For the TAGE predictor
 std::vector<bentry> btable(1 << LOGB);			//bimodal TAGE table
 std::vector<std::vector<gentry>> gtable(NHIST + 1);	// tagged TAGE tables
-std::vector<int>  m{0,8,12,18,27,40,60,90,135,203,305,459,690}; // history lengths
-std::vector<int>  TB{0,8, 9, 9,10,10,11,11,12,12,13,13,14};		// tag width for the different tagged tables
-std::vector<int>  logg={0,10,10,10,10,10,10,10,10,10,10,10,10};		// log of number entries of the different tagged tables
 std::vector<int>  GI(NHIST + 1);		// indexes to the different tables are computed only once
 std::vector<uint> GTAG(NHIST + 1);	// tags for the different tables are computed only once
 int  BI;				// index of the bimodal table
@@ -130,6 +138,7 @@ bool LongestMatchPred;
 int  HitBank;			// longest matching bank
 int  AltBank;			// alternate matching bank
 int  Seed;		        // for the pseudo-random number generator
+
 
 
 class PREDICTOR
@@ -263,6 +272,12 @@ public:
 	    for (int i = 1; i <= NHIST; i++) {
             GI.at(i) = gindex (PC, i, phist, ch_i);
             GTAG.at(i) = gtag (PC, i, ch_t.at(0), ch_t.at(1));
+#ifdef DBG
+            std::cout << std::dec << "   " << i
+                      << std::setw(4) << " idx=" <<  GI.at(i)
+                      << std::hex << std::setw(8) << " t=" << GTAG.at(i)
+                      << std::endl;
+#endif
 	    }
 
 	    BI = PC & ((1 << LOGB) - 1);
@@ -353,10 +368,21 @@ public:
             Y--;
             ghist.at(Y & (HISTBUFFERLENGTH - 1)) = DIR;
             X = (X << 1) ^ PATHBIT;
+            static int cnt=0;
+            ++cnt;
+#ifdef DBG
+            std::cout << std::dec << cnt << ": pc=" << std::hex << PC << " ghist=" <<  getGhistString(ghist, ptghist) << std::endl;
+#endif
             for (int i = 1; i <= NHIST; i++) {
                 H.at(i).update (ghist, Y);
                 G.at(i).update (ghist, Y);
                 J.at(i).update (ghist, Y);
+#ifdef DBG
+                std::cout << "  " << std::dec << i << ".  c_i=" << std::hex << std::setw(8) << H.at(i).comp << std::endl;
+                std::cout << "  " << std::dec << i << ". c_t0=" << std::hex << std::setw(8) << G.at(i).comp << std::endl;
+                std::cout << "  " << std::dec << i << ". c_t1=" << std::hex << std::setw(8) << J.at(i).comp << std::endl;
+
+#endif
             }
 	    }
 
@@ -471,9 +497,6 @@ public:
                        ch_i,
                        ch_t.at(0),
                        ch_t.at(1));
-        static int cnt=0;
-        ++cnt;
-        // std::cout << std::dec << cnt << ": pc=" << std::hex << PC << " ghist=" <<  getGhistString(ghist, ptghist) << std::endl;
 
         //END PREDICTOR UPDATE
 

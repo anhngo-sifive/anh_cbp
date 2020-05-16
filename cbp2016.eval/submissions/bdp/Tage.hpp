@@ -34,6 +34,11 @@ public:
 
     void setDbgOstream(std::ostream &os);
     void updateFoldedHist(const tage::GHR &ghr);
+    void printFoldedHist() const {
+        for(uint32_t bank=0; bank<num_tagged_tables_; ++bank) {
+            tagged_tbl_.at(bank)->printFoldedHist();
+        }
+    }
     Tage(const Tage&) = delete;
     Tage& operator=(const Tage&) = delete;
 
@@ -127,6 +132,12 @@ bool Tage<PredT>::lookupPrediction(const uint64_t pc,
 
     TaggedTablePredResult<PredT> tagged_presult;
     int32_t longest_match_bank = -1;
+
+#if 1
+    for (int32_t bank=(num_tagged_tables_ - 1); bank>=0; --bank) {
+        tagged_tbl_[bank]->printIdxTag(pc);
+    }
+#endif
 
     // Longest history tagged-table look-up
     for (int32_t bank=(num_tagged_tables_ - 1); bank>=0; --bank) {
@@ -365,7 +376,7 @@ template <typename PredT>
 void Tage<PredT>::updateFoldedHist(const tage::GHR &ghr)
 {
     for(uint32_t bank=0; bank<num_tagged_tables_; ++bank) {
-                tagged_tbl_.at(bank)->updateFoldedHist(ghr);
+        tagged_tbl_.at(bank)->updateFoldedHist(ghr);
     }
 }
 
