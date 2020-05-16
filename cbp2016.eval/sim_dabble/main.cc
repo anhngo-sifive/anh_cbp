@@ -18,6 +18,7 @@ using namespace std;
 #include "predictor.h"
 #include "../submissions/bdp/Bdp.hpp"
 #include "../submissions/bdp/GHR.hpp"
+#include "../submissions/bdp/BdpPredResult.hpp"
 using namespace dabble;
 
 
@@ -42,8 +43,8 @@ uint32_t addr_num_bits =                                         20;
 uint32_t ghr_pc_bits_per_grain =                                 10;
 uint32_t ghr_tgt_bits_per_grain =                                10;
 uint32_t ghr_hist_bits_per_br =                                   7;
-bool     ghr_enable_mallard_hash =                             true;
-bool     ghr_dont_update_on_NT =                               true;
+bool     ghr_enable_mallard_hash =                             false;
+bool     ghr_dont_update_on_NT =                               false;
 
 uint32_t bdp_num_tagged_tables = bdp_tagged_table_size.size();
 uint32_t addr_shift_amount = 1;
@@ -220,6 +221,11 @@ void updateGhrForConditional(const uint64_t pc,
     }
     else {
         ghr.updateWithTaken(taken);
+#if 1
+        static int cnt=0;
+        ++cnt;
+        std::cout << std::dec << cnt << ": pc=" << std::hex << (pc<<1) << " ghist=" <<  ghr.to_string() << std::endl;
+#endif
         bdp.updateFoldedHist(ghr);
     }
 }
@@ -285,9 +291,9 @@ int main(int argc, char* argv[]){
   ///////////////////////////////////////////////
 
       OpType opType= OPTYPE_ERROR;
-      UINT64 PC;
-      bool branchTaken;
-      UINT64 branchTarget;
+      UINT64 pc;
+      bool actual_taken;
+      UINT64 actual_target;
       UINT64 numIter = 0;
 
       for (auto it = bt9_reader.begin(); it != bt9_reader.end(); ++it) {
@@ -296,43 +302,45 @@ int main(int argc, char* argv[]){
               continue;
           }
 
-        CheckHeartBeat(++numIter, numMispred); //Here numIter will be equal to number of branches read
+          // CheckHeartBeat(++numIter, numMispred); //Here numIter will be equal to number of branches read
         try {
           bt9::BrClass br_class = it->getSrcNode()->brClass();
           opType = BrClass2OpType(br_class);
           assert(opType != OPTYPE_ERROR);
 
-          PC = it->getSrcNode()->brVirtualAddr();
+          pc = it->getSrcNode()->brVirtualAddr();
 
-          branchTaken = it->getEdge()->isTakenPath();
-          branchTarget = it->getEdge()->brVirtualTarget();
+          actual_taken = it->getEdge()->isTakenPath();
+          actual_target = it->getEdge()->brVirtualTarget();
 
           if (br_class.conditionality == bt9::BrClass::Conditionality::CONDITIONAL) {
               bool predDir = false;
-#if 0
+#if 1
               bdp::PredResult bdp_presult{bdp_num_tagged_tables};
               const bool is_indirect = false;
               const auto shifted_pc  = (pc >> addr_shift_amount);
-              bdp_->lookupPrediction(pc,
-                                     *bdp_ghr_,
-                                     is_indirect,
-                                     ghr_enable_mallard_hash_,
-                                     bdp_presult);   // <-- bdp.1:  lookup
+              bdp.lookupPrediction(pc,
+                                   ghr,
+                                   is_indirect,
+                                   ghr_enable_mallard_hash,
+                                   bdp_presult);   // <-- bdp.1:  lookup
 
-              updateGhrForConditional_(shifted_pc,
-                                       (actual_target>>addr_shift_amount),
-                                       actual_taken); // bdp.2 update GHR
+              updateGhrForConditional(shifted_pc,
+                                      (actual_target>>addr_shift_amount),
+                                      actual_taken,
+                                      ghr,
+                                      bdp); // bdp.2 update GHR
 
               predDir = bdp_presult.getSummarizedPred();
-              bdp_->updatePredictor(shifted_pc,
-                                    bdp_presult,
-                                    actual_taken); // <-- bdp.3:  train tables
+              bdp.updatePredictor(shifted_pc,
+                                  bdp_presult,
+                                  actual_taken); // <-- bdp.3:  train tables
 #else
-              predDir = brpred->GetPrediction(PC);
-              brpred->UpdatePredictor(PC, opType, branchTaken, predDir, branchTarget);
+              predDir = brpred->GetPrediction(pc);
+              brpred->UpdatePredictor(pc, opType, actual_taken, predDir, actual_target);
 #endif
 
-              if(predDir != branchTaken){
+              if(predDir != actual_taken){
                   numMispred++; // update mispred stats
               }
               cond_branch_instruction_counter++;
@@ -346,7 +354,7 @@ int main(int argc, char* argv[]){
           }
           else if (br_class.conditionality == bt9::BrClass::Conditionality::UNCONDITIONAL) { // for predictors that want to track unconditional branches
               uncond_branch_instruction_counter++;
-              //brpred->TrackOtherInst(PC, opType, branchTaken, branchTarget);
+              //brpred->TrackOtherInst(pc, opType, actual_taken, actual_target);
           }
           else {
               fprintf(stderr, "CONDITIONALITY ERROR\n");

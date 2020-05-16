@@ -45,61 +45,61 @@ void CheckHeartBeat(UINT64 numIter, UINT64 numMispred)
 //    fflush(stdout);
 //  }
   if(numIter == d1K){ //prints MPKI after 100K branches
-    printf("  MPKBr_1K         \t : %10.4f",   1000.0*(double)(numMispred)/(double)(numIter));
+    printf("  MPKBr_1K         \t : %10.4f\n",   1000.0*(double)(numMispred)/(double)(numIter));
     fflush(stdout);
   }
 
   if(numIter == d10K){ //prints MPKI after 100K branches
-    printf("  MPKBr_10K         \t : %10.4f",   1000.0*(double)(numMispred)/(double)(numIter));
+    printf("  MPKBr_10K         \t : %10.4f\n",   1000.0*(double)(numMispred)/(double)(numIter));
     fflush(stdout);
   }
 
   if(numIter == d100K){ //prints MPKI after 100K branches
-    printf("  MPKBr_100K         \t : %10.4f",   1000.0*(double)(numMispred)/(double)(numIter));
+    printf("  MPKBr_100K         \t : %10.4f\n",   1000.0*(double)(numMispred)/(double)(numIter));
     fflush(stdout);
   }
   if(numIter == d1M){
-    printf("  MPKBr_1M         \t : %10.4f",   1000.0*(double)(numMispred)/(double)(numIter));
+    printf("  MPKBr_1M         \t : %10.4f\n",   1000.0*(double)(numMispred)/(double)(numIter));
     fflush(stdout);
   }
 
   if(numIter == d10M){ //prints MPKI after 100K branches
-    printf("  MPKBr_10M         \t : %10.4f",   1000.0*(double)(numMispred)/(double)(numIter));
+    printf("  MPKBr_10M         \t : %10.4f\n",   1000.0*(double)(numMispred)/(double)(numIter));
     fflush(stdout);
   }
 
   if(numIter == d30M){ //prints MPKI after 100K branches
-    printf("  MPKBr_30M         \t : %10.4f",   1000.0*(double)(numMispred)/(double)(numIter));
+    printf("  MPKBr_30M         \t : %10.4f\n",   1000.0*(double)(numMispred)/(double)(numIter));
     fflush(stdout);
   }
 
   if(numIter == d60M){ //prints MPKI after 100K branches
-    printf("  MPKBr_60M         \t : %10.4f",   1000.0*(double)(numMispred)/(double)(numIter));
+    printf("  MPKBr_60M         \t : %10.4f\n",   1000.0*(double)(numMispred)/(double)(numIter));
     fflush(stdout);
   }
 
   if(numIter == d100M){ //prints MPKI after 100K branches
-    printf("  MPKBr_100M         \t : %10.4f",   1000.0*(double)(numMispred)/(double)(numIter));
+    printf("  MPKBr_100M         \t : %10.4f\n",   1000.0*(double)(numMispred)/(double)(numIter));
     fflush(stdout);
   }
 
   if(numIter == d300M){ //prints MPKI after 100K branches
-    printf("  MPKBr_300M         \t : %10.4f",   1000.0*(double)(numMispred)/(double)(numIter));
+    printf("  MPKBr_300M         \t : %10.4f\n",   1000.0*(double)(numMispred)/(double)(numIter));
     fflush(stdout);
   }
 
   if(numIter == d600M){ //prints MPKI after 100K branches
-    printf("  MPKBr_600M         \t : %10.4f",   1000.0*(double)(numMispred)/(double)(numIter));
+    printf("  MPKBr_600M         \t : %10.4f\n",   1000.0*(double)(numMispred)/(double)(numIter));
     fflush(stdout);
   }
 
   if(numIter == d1B){ //prints MPKI after 100K branches
-    printf("  MPKBr_1B         \t : %10.4f",   1000.0*(double)(numMispred)/(double)(numIter));
+    printf("  MPKBr_1B         \t : %10.4f\n",   1000.0*(double)(numMispred)/(double)(numIter));
     fflush(stdout);
   }
 
   if(numIter == d10B){ //prints MPKI after 100K branches
-    printf("  MPKBr_10B         \t : %10.4f",   1000.0*(double)(numMispred)/(double)(numIter));
+    printf("  MPKBr_10B         \t : %10.4f\n",   1000.0*(double)(numMispred)/(double)(numIter));
     fflush(stdout);
   }
 
@@ -167,7 +167,7 @@ int main(int argc, char* argv[]){
       UINT64 numIter = 0;
 
       for (auto it = bt9_reader.begin(); it != bt9_reader.end(); ++it) {
-        CheckHeartBeat(++numIter, numMispred); //Here numIter will be equal to number of branches read
+          // CheckHeartBeat(++numIter, numMispred); //Here numIter will be equal to number of branches read
 
         try {
           bt9::BrClass br_class = it->getSrcNode()->brClass();
@@ -354,24 +354,24 @@ int main(int argc, char* argv[]){
 
     //NOTE: competitors are judged solely on MISPRED_PER_1K_INST. The additional stats are just for tuning your predictors.
 
-      printf("  TRACE \t : %s" , trace_path.c_str());
-      printf("  NUM_INSTRUCTIONS            \t : %10llu",   total_instruction_counter);
-      printf("  NUM_BR                      \t : %10llu",   branch_instruction_counter-1); //JD2_2_2016 NOTE there is a dummy branch at the beginning of the trace...
-      printf("  NUM_UNCOND_BR               \t : %10llu",   uncond_branch_instruction_counter);
-      printf("  NUM_CONDITIONAL_BR          \t : %10llu",   cond_branch_instruction_counter);
-//ver2      printf("  NUM_CONDITIONAL_BR_BTB_MISS \t : %10llu",   btb_miss_cond_branch_instruction_counter);
-//ver2      printf("  NUM_CONDITIONAL_BR_BTB_ANSF \t : %10llu",   btb_ansf_cond_branch_instruction_counter);
-//ver2      printf("  NUM_CONDITIONAL_BR_BTB_ATSF \t : %10llu",   btb_atsf_cond_branch_instruction_counter);
-//ver2      printf("  NUM_CONDITIONAL_BR_BTB_DYN  \t : %10llu",   btb_dyn_cond_branch_instruction_counter);
-      printf("  NUM_MISPREDICTIONS          \t : %10llu",   numMispred);
-//ver2      printf("  NUM_MISPREDICTIONS_BTB_MISS \t : %10llu",   numMispred_btbMISS);
-//ver2      printf("  NUM_MISPREDICTIONS_BTB_ANSF \t : %10llu",   numMispred_btbANSF);
-//ver2      printf("  NUM_MISPREDICTIONS_BTB_ATSF \t : %10llu",   numMispred_btbATSF);
-//ver2      printf("  NUM_MISPREDICTIONS_BTB_DYN  \t : %10llu",   numMispred_btbDYN);
-      printf("  MISPRED_PER_1K_INST         \t : %10.4f",   1000.0*(double)(numMispred)/(double)(total_instruction_counter));
-//ver2      printf("  MISPRED_PER_1K_INST_BTB_MISS\t : %10.4f",   1000.0*(double)(numMispred_btbMISS)/(double)(total_instruction_counter));
-//ver2      printf("  MISPRED_PER_1K_INST_BTB_ANSF\t : %10.4f",   1000.0*(double)(numMispred_btbANSF)/(double)(total_instruction_counter));
-//ver2      printf("  MISPRED_PER_1K_INST_BTB_ATSF\t : %10.4f",   1000.0*(double)(numMispred_btbATSF)/(double)(total_instruction_counter));
-//ver2      printf("  MISPRED_PER_1K_INST_BTB_DYN \t : %10.4f",   1000.0*(double)(numMispred_btbDYN)/(double)(total_instruction_counter));
+      printf("  TRACE \t : %s\n" , trace_path.c_str());
+      printf("  NUM_INSTRUCTIONS            \t : %10llu\n",   total_instruction_counter);
+      printf("  NUM_BR                      \t : %10llu\n",   branch_instruction_counter-1); //JD2_2_2016 NOTE there is a dummy branch at the beginning of the trace...
+      printf("  NUM_UNCOND_BR               \t : %10llu\n",   uncond_branch_instruction_counter);
+      printf("  NUM_CONDITIONAL_BR          \t : %10llu\n",   cond_branch_instruction_counter);
+//ver2      printf("  NUM_CONDITIONAL_BR_BTB_MISS \t : %10llu\n",   btb_miss_cond_branch_instruction_counter);
+//ver2      printf("  NUM_CONDITIONAL_BR_BTB_ANSF \t : %10llu\n",   btb_ansf_cond_branch_instruction_counter);
+//ver2      printf("  NUM_CONDITIONAL_BR_BTB_ATSF \t : %10llu\n",   btb_atsf_cond_branch_instruction_counter);
+//ver2      printf("  NUM_CONDITIONAL_BR_BTB_DYN  \t : %10llu\n",   btb_dyn_cond_branch_instruction_counter);
+      printf("  NUM_MISPREDICTIONS          \t : %10llu\n",   numMispred);
+//ver2      printf("  NUM_MISPREDICTIONS_BTB_MISS \t : %10llu\n",   numMispred_btbMISS);
+//ver2      printf("  NUM_MISPREDICTIONS_BTB_ANSF \t : %10llu\n",   numMispred_btbANSF);
+//ver2      printf("  NUM_MISPREDICTIONS_BTB_ATSF \t : %10llu\n",   numMispred_btbATSF);
+//ver2      printf("  NUM_MISPREDICTIONS_BTB_DYN  \t : %10llu\n",   numMispred_btbDYN);
+      printf("  MISPRED_PER_1K_INST         \t : %10.4f\n",   1000.0*(double)(numMispred)/(double)(total_instruction_counter));
+//ver2      printf("  MISPRED_PER_1K_INST_BTB_MISS\t : %10.4f\n",   1000.0*(double)(numMispred_btbMISS)/(double)(total_instruction_counter));
+//ver2      printf("  MISPRED_PER_1K_INST_BTB_ANSF\t : %10.4f\n",   1000.0*(double)(numMispred_btbANSF)/(double)(total_instruction_counter));
+//ver2      printf("  MISPRED_PER_1K_INST_BTB_ATSF\t : %10.4f\n",   1000.0*(double)(numMispred_btbATSF)/(double)(total_instruction_counter));
+//ver2      printf("  MISPRED_PER_1K_INST_BTB_DYN \t : %10.4f\n",   1000.0*(double)(numMispred_btbDYN)/(double)(total_instruction_counter));
       printf("\n");
 }

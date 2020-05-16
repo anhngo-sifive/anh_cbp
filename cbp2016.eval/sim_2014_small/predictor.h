@@ -22,8 +22,6 @@
 
 #define NNN 1			// number of entries allocated on a TAGE misprediction
 
-// number of tagged tables
-#define NHIST 12
 
 #define HYSTSHIFT 2 // bimodal hysteresis shared by 4 entries
 #define LOGB 14 // log of number of entries in bimodal predictor
@@ -44,8 +42,9 @@ std::vector<std::vector<int8_t>>  use_alt_on_na;
 int8_t BIM=0;
 
 std::string getGhistString(const std::vector<uint8_t> &ghist, int ptr) {
+    ptr += 511;
     std::stringstream tmp;
-    for (uint32_t i=0; i<100; ++i) {
+    for (uint32_t i=0; i<512; ++i) {
         ptr = ptr % ghist.size();
         bool hbit = ghist.at(ptr);
         tmp << hbit;
@@ -106,10 +105,12 @@ public:
 
 int TICK;// for the reset of the u counter
 
+// number of tagged tables
+#define NHIST 12
 
 std::vector<uint8_t> ghist(HISTBUFFERLENGTH,0);
 int ptghist = 0;
-long long phist;		//path history
+long long phist=0;		//path history
 std::vector<folded_history> ch_i(NHIST + 1);	//utility for computing TAGE indices
 std::vector<std::vector<folded_history>> ch_t(2,std::vector<folded_history>(NHIST + 1));	//utility for computing TAGE tags
 
@@ -470,6 +471,9 @@ public:
                        ch_i,
                        ch_t.at(0),
                        ch_t.at(1));
+        static int cnt=0;
+        ++cnt;
+        // std::cout << std::dec << cnt << ": pc=" << std::hex << PC << " ghist=" <<  getGhistString(ghist, ptghist) << std::endl;
 
         //END PREDICTOR UPDATE
 
