@@ -10,6 +10,7 @@
 #include "TaggedTableEntry.hpp"
 #include "TaggedTablePredResult.hpp"
 #include "GHR.hpp"
+#include "PHR.hpp"
 
 namespace dabble {
 namespace tage {
@@ -29,12 +30,13 @@ namespace tage {
         void initialize(uint64_t initial_tag, PredT initial_pred_val);
         bool lookupPrediction(const uint64_t PC,
                               const GHR &ghr,
+                              const PHR &phr,
                               const bool is_indirect,
                               const bool ghr_enable_mallard_hash,
                               TaggedTablePredResult<PredT> &presult) const;
-        void printIdxTag(const uint64_t PC) const    {
-            std::cout << std::dec << "   " << bank_num_
-                      << std::setw(4) << " idx=" <<  calcIdx_classic_(PC)
+        void printIdxTag(const uint64_t PC, const PHR &phr) const    {
+            std::cout << std::dec << "   " << (bank_num_+1)
+                      << std::setw(4) << " idx=" <<  calcIdx_cbp_(PC, phr)
                       << std::hex << std::setw(8) << " t=" << calcTag_classic_(PC)
                       << std::endl;
 
@@ -71,6 +73,9 @@ namespace tage {
                                   uint32_t rotate_amount) const;
         uint32_t calcIdx_classic_(uint64_t PC) const;
         uint64_t calcTag_classic_(uint64_t PC) const;
+
+        uint32_t calcIdx_cbp_(uint64_t PC, const PHR &phr)  const;
+
         uint64_t getLsb_(const GHR::BitVector &bvect, uint32_t num_bits) const  {
             // XXX (PERF) extracting one bit a a time
             uint64_t lsb_bits=0;
@@ -87,6 +92,21 @@ namespace tage {
             val = (val >> rot_len) | (val << (val_len-rot_len));
             val &= mask;
         }
+
+        // the index functions for the tagged tables uses path history as in the OGEHL predictor
+        //F serves to mix path history: not very important impact
+        int F (long long A, int size, int bank) const
+        {
+            int A1, A2;
+            A = A & ((1 << size) - 1);
+            A1 = (A & ((1 << tbl_idx_num_bits_) - 1));
+            A2 = (A >> tbl_idx_num_bits_);
+            A2 = ((A2 << bank) & ((1 << tbl_idx_num_bits_) - 1)) + (A2 >> (tbl_idx_num_bits_ - bank));
+            A = A1 ^ A2;
+            A = ((A << bank) & ((1 << tbl_idx_num_bits_) - 1)) + (A >> (tbl_idx_num_bits_ - bank));
+            return (A);
+	}
+
 
         std::ostream *dbg_ostream_=nullptr; // Ostream for debugging/logging
 
@@ -151,10 +171,12 @@ namespace tage {
     template<typename PredT>
     bool TaggedTable<PredT>::lookupPrediction(const uint64_t PC,
                                               const GHR &ghr,
+                                              const PHR &phr,
                                               const bool is_indirect,
                                               const bool enable_mallard_hash,
                                               TaggedTablePredResult<PredT> &presult) const
     {
+        (void) phr;
 
         /* Tag and index calculations use 4 history vectors:
          * 1. ghr, globally maintained and is passed in
@@ -168,7 +190,7 @@ namespace tage {
             calcTag_classic_(PC);
         const int32_t  idx = enable_mallard_hash ?
             calcIdx_mallard_(PC, ghr, bank_num_*2+is_indirect) :
-            calcIdx_classic_(PC);
+            calcIdx_cbp_(PC, phr);
 
         // Access table and determine if tag matched
         const auto &tentry = getEntry(idx);
@@ -285,6 +307,20 @@ namespace tage {
     {
         const uint64_t hashed_PC  = PC ^ (PC >> (abs (int32_t(tbl_idx_num_bits_) - int32_t(bank_num_)) + 1));
         const uint32_t index      = hashed_PC ^ folded_ghr_for_idx_.getValue();
+
+        return (index & tbl_idx_mask_);
+    }
+
+    // Index computation--ful hash of PC, ghist and phist
+    template<typename PredT>
+    uint32_t TaggedTable<PredT>::calcIdx_cbp_(uint64_t PC, const PHR &phr)  const
+    {
+
+	    int index;
+	    int M = (geometric_ghr_len_ > phr.getLength()) ? phr.getLength() : geometric_ghr_len_;
+        index =
+            PC ^ (PC >> (abs (int32_t(tbl_idx_num_bits_) - int32_t(bank_num_+1)) + 1))
+            ^ folded_ghr_for_idx_.getValue() ^ F (phr.getHistory(), M, bank_num_+1);
 
         return (index & tbl_idx_mask_);
     }

@@ -23,6 +23,7 @@ public:
          PredT init_pred);
     bool lookupPrediction(const uint64_t pc,
                           const GHR &ghr,
+                          const PHR &phr,
                           const bool is_indirect,
                           const bool enable_mallard_hash,
                           PredResult<PredT> &presult);
@@ -58,7 +59,7 @@ protected:
                                   const PredT actual_val);
 
     // Allocate up to N entries per mispredict
-    void handleAllocate_(const PredResult<PredT> &presult, const PredT actual_val);
+    void handleAllocate_(const uint64_t pc, const PredResult<PredT> &presult, const PredT actual_val);
 
     void handleUpdatePrediction_(const PredResult<PredT> &presult, const PredT actual_val);
 
@@ -125,6 +126,7 @@ Tage<PredT>::Tage(const TageParams &params,
 template <typename PredT>
 bool Tage<PredT>::lookupPrediction(const uint64_t pc,
                                    const GHR &ghr,
+                                   const PHR &phr,
                                    const bool is_indirect,
                                    const bool enable_mallard_hash,
                                    PredResult<PredT> &presult)
@@ -134,8 +136,8 @@ bool Tage<PredT>::lookupPrediction(const uint64_t pc,
     int32_t longest_match_bank = -1;
 
 #if 1
-    for (int32_t bank=(num_tagged_tables_ - 1); bank>=0; --bank) {
-        tagged_tbl_[bank]->printIdxTag(pc);
+    for (int32_t bank=0; bank<num_tagged_tables_ ; ++bank) {
+        tagged_tbl_[bank]->printIdxTag(pc, phr);
     }
 #endif
 
@@ -143,6 +145,7 @@ bool Tage<PredT>::lookupPrediction(const uint64_t pc,
     for (int32_t bank=(num_tagged_tables_ - 1); bank>=0; --bank) {
         const bool tag_matched  = tagged_tbl_[bank]->lookupPrediction(pc,
                                                                       ghr,
+                                                                      phr,
                                                                       is_indirect,
                                                                       enable_mallard_hash,
                                                                       tagged_presult);
@@ -162,6 +165,7 @@ bool Tage<PredT>::lookupPrediction(const uint64_t pc,
     for (int32_t bank=(longest_match_bank - 1); bank>=0; --bank) {
         const bool tag_matched  = tagged_tbl_[bank]->lookupPrediction(pc,
                                                                       ghr,
+                                                                      phr,
                                                                       is_indirect,
                                                                       enable_mallard_hash,
                                                                       tagged_presult);
@@ -204,7 +208,7 @@ void Tage<PredT>::updatePredictor(const uint64_t pc,
     bool need_allocate = determineNeedToAllocate_(pc, presult, actual_val);
 
     if (need_allocate) {
-        handleAllocate_(presult, actual_val);
+        handleAllocate_(pc, presult, actual_val);
     }
 
     handleUpdatePrediction_(presult, actual_val);
@@ -280,7 +284,7 @@ bool Tage<PredT>::determineNeedToAllocate_(const uint64_t pc,
 
 // Allocate up to N entries per mispredict
 template <typename PredT>
-void Tage<PredT>::handleAllocate_(const PredResult<PredT> &presult, const PredT actual_val)
+void Tage<PredT>::handleAllocate_(const uint64_t pc, const PredResult<PredT> &presult, const PredT actual_val)
 {
     const auto longest_match_bank = presult.getLongestMatchBank();
     uint32_t num_no_allocate = 0;
@@ -288,9 +292,14 @@ void Tage<PredT>::handleAllocate_(const PredResult<PredT> &presult, const PredT 
     // TAGE can randomly skip the table after longest-match when allocating
     // NOTE: removing this feature dropped MPKI for a few CBP eval traces.
     // XXX check to see how Mallard does this
-    const uint32_t start_bank = ((myrand_() & 127) < 32) ? (longest_match_bank + 2) : (longest_match_bank + 1);
+    const uint32_t start_bank = (longest_match_bank + 1);
     for (uint32_t bank=start_bank; bank<num_tagged_tables_; ++bank) {
         const auto saved_idx = presult.getSavedIdx(bank);
+        std::cout << "Allocate, pc=" << std::hex << (pc<<1) << std::dec
+                  << " bank=" << (bank+1)
+                  << " idx=" << saved_idx
+                  << " tag=" << std::hex << presult.getSavedTag(bank)
+                  << std::endl;
         auto &tentry = tagged_tbl_.at(bank)->getEntry(saved_idx);
         if (tentry.getUsefulCounter().getValue() == 0) {
             tentry.reset(presult.getSavedTag(bank), actual_val);

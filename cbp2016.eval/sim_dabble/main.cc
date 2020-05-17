@@ -18,6 +18,7 @@ using namespace std;
 #include "predictor.h"
 #include "../submissions/bdp/Bdp.hpp"
 #include "../submissions/bdp/GHR.hpp"
+#include "../submissions/bdp/PHR.hpp"
 #include "../submissions/bdp/BdpPredResult.hpp"
 using namespace dabble;
 
@@ -37,7 +38,7 @@ vuint32  bdp_tag_num_bits =                  vuint32({14,14,14,14});
 vuint32  bdp_geometric_len =                 vuint32({23,47,71,97});
 uint32_t bdp_bimodal_tbl_size =                                4096;
 uint32_t bdp_bimodal_hys_num_bits =                               1;
-uint32_t bdp_bimodal_hys_frac =                                   4;
+uint32_t bdp_bimodal_hys_frac =                                   1;
 uint32_t addr_num_bits =                                         20;
 
 uint32_t ghr_pc_bits_per_grain =                                 10;
@@ -203,10 +204,11 @@ OpType BrClass2OpType(bt9::BrClass br_class)
 }
 
 
-void updateGhrForConditional(const uint64_t pc,
-                             const uint64_t tgt,
-                             const bool     taken,
+void updateGhrForConditional(uint64_t pc,
+                             uint64_t tgt,
+                             bool     taken,
                              tage::GHR      &ghr,
+                             tage::PHR      &phr,
                              bdp::Bdp       &bdp)
 
 {
@@ -223,9 +225,14 @@ void updateGhrForConditional(const uint64_t pc,
         ghr.updateWithTaken(taken);
         bdp.updateFoldedHist(ghr);
 #if 1
+        pc <<= 1;
+        phr.addHistory_cbp(pc);
         static int cnt=0;
         ++cnt;
-        std::cout << std::dec << cnt << ": pc=" << std::hex << (pc<<1) << " ghist=" <<  ghr.to_string() << std::endl;
+        std::cout << std::dec << cnt << ": pc=" << std::hex << pc
+                  << " phist=" << std::setw(8) << phr.getHistory()
+                  << " ghist=" <<  ghr.to_string()
+                  << std::endl;
         bdp.printFoldedHist();
 #endif
     }
@@ -248,6 +255,7 @@ int main(int argc, char* argv[]){
   tage::GHR ghr(ghr_pc_bits_per_grain,
                 ghr_tgt_bits_per_grain,
                 ghr_hist_bits_per_br);
+  tage::PHR phr(27);
   bdp::BdpParams bdp_params(bdp_use_alt_ctr_num_bits,
                             bdp_use_alt_num_ctr,
                             bdp_num_to_allocate_on_mispredict,
@@ -316,31 +324,45 @@ int main(int argc, char* argv[]){
 
           if (br_class.conditionality == bt9::BrClass::Conditionality::CONDITIONAL) {
               bool predDir = false;
-#if 1
               bdp::PredResult bdp_presult{bdp_num_tagged_tables};
               const bool is_indirect = false;
               const auto shifted_pc  = (pc >> addr_shift_amount);
+              std::cout << "*** pc=" << std::hex << pc << std::endl;
               bdp.lookupPrediction(pc,
                                    ghr,
+                                   phr,
                                    is_indirect,
                                    ghr_enable_mallard_hash,
                                    bdp_presult);   // <-- bdp.1:  lookup
 
-              updateGhrForConditional(shifted_pc,
+
+              predDir = bdp_presult.getSummarizedPred();
+
+#if 1
+              int longest = bdp_presult.getLongestMatchBank();
+              int longest_idx = (longest >= 0) ? bdp_presult.getSavedIdx(longest) : 0;
+              uint32_t longest_tag = (longest >= 0) ? bdp_presult.getSavedTag(longest) : 0;
+              int alt = bdp_presult.getAltBank();
+              int alt_idx = (alt >= 0) ? bdp_presult.getSavedIdx(alt) : 0;
+              uint32_t alt_tag = (alt >= 0) ? bdp_presult.getSavedTag(alt) : 0;
+              const bool mispred = predDir != actual_taken;
+              std::cout << "pc=" << std::hex << pc << std::dec
+                        << " dir=" << actual_taken
+                        << " mispred=" << mispred
+                        << " longest=(" << (longest+ 1) << "," << longest_idx << "," << longest_tag << ")"
+                        << " alt=(" << (alt+1) << "," << alt_idx << "," << alt_tag << ")"
+                        << std::endl;
+#endif
+
+             bdp.updatePredictor(shifted_pc,
+                                  bdp_presult,
+                                  actual_taken); // <-- bdp.3:  train tables
+             updateGhrForConditional(shifted_pc,
                                       (actual_target>>addr_shift_amount),
                                       actual_taken,
                                       ghr,
+                                      phr,
                                       bdp); // bdp.2 update GHR
-
-              predDir = bdp_presult.getSummarizedPred();
-              bdp.updatePredictor(shifted_pc,
-                                  bdp_presult,
-                                  actual_taken); // <-- bdp.3:  train tables
-#else
-              predDir = brpred->GetPrediction(pc);
-              brpred->UpdatePredictor(pc, opType, actual_taken, predDir, actual_target);
-#endif
-
               if(predDir != actual_taken){
                   numMispred++; // update mispred stats
               }

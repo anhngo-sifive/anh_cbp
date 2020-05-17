@@ -14,7 +14,7 @@
 #include "bt9.h"
 #include "bt9_reader.h"
 
-#define NNN 1			// number of entries allocated on a TAGE misprediction
+#define NNN 1			// number of extra entries allocated on a TAGE misprediction
 
 
 #define HYSTSHIFT 2 // bimodal hysteresis shared by 4 entries
@@ -82,8 +82,13 @@ public:
 class bentry			// TAGE bimodal table entry
 {
 public:
+#if 1
     int8_t pred = 0;
     int8_t hyst = 1;
+#else
+    int8_t pred = 1;
+    int8_t hyst = 0;
+#endif
 };
 
 class gentry			// TAGE global table entry
@@ -96,7 +101,7 @@ public:
 
 
 
-//#define DBG
+// #define DBG
 
 int TICK;// for the reset of the u counter
 
@@ -249,6 +254,9 @@ public:
 	    }
 	    else if (inter > 0)
             inter--;
+#ifdef DBG
+        std::cout << " Base ctrupdate idx=" << std::dec << BI << std::endl;
+#endif
 	    btable.at(BI).pred = inter >> 1;
 	    btable.at(BI >> HYSTSHIFT).hyst = (inter & 1);
 	};
@@ -343,7 +351,7 @@ public:
                         uint16_t brtype,
                         bool taken,
                         uint32_t target,
-                        long long &X,
+                        long long &phr,
                         int &Y,
                         std::vector<folded_history> &H,
                         std::vector<folded_history> &G,
@@ -367,11 +375,15 @@ public:
             //update  history
             Y--;
             ghist.at(Y & (HISTBUFFERLENGTH - 1)) = DIR;
-            X = (X << 1) ^ PATHBIT;
+            phr = (phr << 1) ^ PATHBIT;
+            phr &= ((1ULL << PHISTWIDTH) - 1);
             static int cnt=0;
             ++cnt;
 #ifdef DBG
-            std::cout << std::dec << cnt << ": pc=" << std::hex << PC << " ghist=" <<  getGhistString(ghist, ptghist) << std::endl;
+            std::cout << std::dec << cnt << ": pc=" << std::hex << PC
+                      << " phist=" << std::setw(8) << phist
+                      << " ghist=" <<  getGhistString(ghist, ptghist)
+                      << std::endl;
 #endif
             for (int i = 1; i <= NHIST; i++) {
                 H.at(i).update (ghist, Y);
@@ -424,6 +436,13 @@ public:
             int Penalty = 0;
             int NA = 0;
             for (int i = HitBank + A; i <= NHIST; i += 1)  {
+#ifdef DBG
+                std::cout << "Allocate, pc=" << std::hex << PC << std::dec
+                          << " bank=" << i
+                          << " idx=" << GI.at(i)
+                          << " tag=" << std::hex <<  GTAG.at(i)
+                          << std::endl;
+#endif
                 if (gtable.at(i).at(GI.at(i)).u == 0) {
                     gtable.at(i).at(GI.at(i)).tag = GTAG.at(i);
                     gtable.at(i).at(GI.at(i)).ctr = (resolveDir) ? 0 : -1;
@@ -462,6 +481,9 @@ public:
                 if (LongestMatchPred != resolveDir)  {
                     // acts as a protection
                     if (AltBank > 0) {
+#ifdef DBG
+                        std::cout << " Alt ctrupdate bank=" << std::dec << AltBank << " idx=" << GI.at(AltBank) << std::endl;
+#endif
                         ctrupdate (gtable.at(AltBank).at(GI.at(AltBank)).ctr,
                                    resolveDir, CWIDTH);
 
@@ -471,6 +493,9 @@ public:
                 }
 
             // 2. update longest-match
+#ifdef DBG
+            std::cout << " Longest ctrupdate bank="<<  std::dec << HitBank << " idx=" << GI.at(HitBank) << std::endl;
+#endif
             ctrupdate (gtable.at(HitBank).at(GI.at(HitBank)).ctr, resolveDir, CWIDTH);
 
             // 3. sign changes: no way it can have been useful

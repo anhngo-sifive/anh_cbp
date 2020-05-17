@@ -22,6 +22,10 @@ namespace tage {
             phr_ &= length_mask_;
         }
 
+        void addHistory_cbp(uint64_t pc) {
+            phr_ = (phr_<<1) ^(pc&127);
+            phr_ &= length_mask_;
+        }
         void addHistoryBit(bool new_bit)
         {
             phr_ <<= 1;
