@@ -14,16 +14,16 @@
 #include "bt9.h"
 #include "bt9_reader.h"
 
-#define NNN 1			// number of extra entries allocated on a TAGE misprediction
+#define NNN 0			// number of extra entries allocated on a TAGE misprediction
 
 
-#define HYSTSHIFT 2 // bimodal hysteresis shared by 4 entries
+#define HYSTSHIFT 0 // bimodal hysteresis shared by 4 entries
 #define LOGB 14 // log of number of entries in bimodal predictor
 
 #define PHISTWIDTH 27		// width of the path history used in TAGE
 
-#define UWIDTH 2  // u counter width on TAGE
-#define CWIDTH 3  // predictor counter width on the TAGE tagged tables
+#define UWIDTH 1  // u counter width on TAGE
+#define CWIDTH 2  // predictor counter width on the TAGE tagged tables
 
 #define HISTBUFFERLENGTH 4096	// we use a 4K entries history buffer to store the branch history
 
@@ -82,7 +82,7 @@ public:
 class bentry			// TAGE bimodal table entry
 {
 public:
-#if 1
+#if 0
     int8_t pred = 0;
     int8_t hyst = 1;
 #else
