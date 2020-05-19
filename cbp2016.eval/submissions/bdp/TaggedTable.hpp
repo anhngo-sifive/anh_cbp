@@ -35,9 +35,14 @@ namespace tage {
                               const bool ghr_enable_mallard_hash,
                               TaggedTablePredResult<PredT> &presult) const;
         void printIdxTag(const uint64_t PC, const PHR &phr) const    {
+            auto idx =  calcIdx_cbp_(PC, phr);
+            auto tag = calcTag_classic_(PC);
+            auto entry = getEntry(idx);
+            auto pred = entry.getPred();
             std::cout << std::dec << "   " << (bank_num_+1)
-                      << std::setw(4) << " idx=" <<  calcIdx_cbp_(PC, phr)
-                      << std::hex << std::setw(8) << " t=" << calcTag_classic_(PC)
+                      << std::setw(4) << " idx=" <<  idx
+                      << std::hex << std::setw(8) << " t=" << tag
+                      << " pred=" << pred
                       << std::endl;
 
         }

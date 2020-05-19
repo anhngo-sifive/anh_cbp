@@ -19,7 +19,7 @@ using namespace std;
 
 #define COUNTER     unsigned long long
 
-// #define DBG
+#define DBG
 
 void CheckHeartBeat(UINT64 numIter, UINT64 numMispred)
 {
@@ -310,10 +310,11 @@ int main(int argc, char* argv[]){
             const bool mispred = predDir != branchTaken;
 #ifdef DBG
             std::cout << "pc=" << std::hex << PC << std::dec
-                      << " dir=" << branchTaken
+                      << " actual=" << branchTaken
+                      << " pred=" << predDir
                       << " mispred=" << mispred
-                      << " longest=(" << HitBank << "," << GI.at(HitBank) << "," <<  GTAG.at(HitBank) << ")"
-                      << " alt=(" << AltBank << "," << GI.at(AltBank) << "," <<  GTAG.at(AltBank) << ")"
+                      << " longest=(" << HitBank << "," << GI.at(HitBank) << ","  << std::hex <<  GTAG.at(HitBank) << std::dec  << ")"
+                      << " alt=(" << AltBank << "," << GI.at(AltBank) << ","  << std::hex <<  GTAG.at(AltBank)  << std::dec << ")"
                       << std::endl;
 #endif
             brpred->UpdatePredictor(PC, branchTaken, predDir, branchTarget);

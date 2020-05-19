@@ -347,10 +347,11 @@ int main(int argc, char* argv[]){
               uint32_t alt_tag = (alt >= 0) ? bdp_presult.getSavedTag(alt) : 0;
               const bool mispred = predDir != actual_taken;
               std::cout << "pc=" << std::hex << pc << std::dec
-                        << " dir=" << actual_taken
+                        << " actual=" << actual_taken
+                        << " pred=" << predDir
                         << " mispred=" << mispred
-                        << " longest=(" << (longest+ 1) << "," << longest_idx << "," << longest_tag << ")"
-                        << " alt=(" << (alt+1) << "," << alt_idx << "," << alt_tag << ")"
+                        << " longest=(" << (longest+ 1) << "," << longest_idx << "," << std::hex << longest_tag << std::dec << ")"
+                        << " alt=(" << (alt+1) << "," << alt_idx << "," << std::hex << alt_tag << std::dec <<  ")"
                         << std::endl;
 #endif
 

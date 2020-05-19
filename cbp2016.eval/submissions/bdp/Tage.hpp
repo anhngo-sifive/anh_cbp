@@ -295,14 +295,15 @@ void Tage<PredT>::handleAllocate_(const uint64_t pc, const PredResult<PredT> &pr
     const uint32_t start_bank = (longest_match_bank + 1);
     for (uint32_t bank=start_bank; bank<num_tagged_tables_; ++bank) {
         const auto saved_idx = presult.getSavedIdx(bank);
-        std::cout << "Allocate, pc=" << std::hex << (pc<<1) << std::dec
-                  << " bank=" << (bank+1)
-                  << " idx=" << saved_idx
-                  << " tag=" << std::hex << presult.getSavedTag(bank)
-                  << std::endl;
         auto &tentry = tagged_tbl_.at(bank)->getEntry(saved_idx);
         if (tentry.getUsefulCounter().getValue() == 0) {
             tentry.reset(presult.getSavedTag(bank), actual_val);
+            std::cout << "Allocate, pc=" << std::hex << (pc<<1) << std::dec
+                      << " bank=" << (bank+1)
+                      << " idx=" << saved_idx
+                      << " tag=" << std::hex << presult.getSavedTag(bank)
+                      << " actual=" << actual_val
+                      << std::endl;
             ++num_allocate;
             if (num_allocate >= num_to_allocate_on_mispredict_) {
                 break;
@@ -348,6 +349,7 @@ void Tage<PredT>::handleUpdatePrediction_(const PredResult<PredT> &presult, cons
                 const auto alt_idx   = presult.getSavedIdx(alt_bank);
                 auto &alt_tentry = tagged_tbl_.at(alt_bank)->getEntry(alt_idx);
                 alt_tentry.updatePredCounter(actual_val);
+                std::cout << " Alt ctrupdate bank=" << std::dec << (alt_bank+1) << " idx=" << alt_idx << std::endl;
             }
             else {
                 bimodal_tbl_->updatePredCounter(presult.getBimodalIdx(), actual_val);
@@ -358,6 +360,7 @@ void Tage<PredT>::handleUpdatePrediction_(const PredResult<PredT> &presult, cons
         const auto longest_match_idx = presult.getSavedIdx(longest_match_bank);
         auto &longest_match_tentry = tagged_tbl_.at(longest_match_bank)->getEntry(longest_match_idx);
         longest_match_tentry.updatePredCounter(actual_val);
+        std::cout << " Longest ctrupdate bank="<<  std::dec << (longest_match_bank+1) << " idx=" << longest_match_idx << std::endl;
 
         // 3. Reset 'useful' if hysteresis becomes weak
         if (  longest_match_tentry.isPredWeak() ) {

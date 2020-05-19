@@ -42,6 +42,7 @@ namespace tage {
             // Update the shared entry with new hysteresis
             hysteresis = bimodal_tbl_[idx].getHysteresis();
             bimodal_tbl_[idx&hys_frac_mask_].setHysteresis(hysteresis);
+            std::cout << " Base ctrupdate idx=" << std::dec << (idx&hys_frac_mask_) << std::endl;
         }
 
         void lookupPrediction(const uint64_t PC_shifted,

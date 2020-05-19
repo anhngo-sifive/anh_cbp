@@ -3,7 +3,6 @@
 #define _PREDICTOR_H_
 
 //To get the predictor storage budget on stderr  uncomment the next line
-//#define PRINTSIZE
 
 #include <cstdlib>
 #include <cstring>
@@ -32,6 +31,7 @@
 #define SIZEUSEALT  (1<<(LOGSIZEUSEALT))
 #define INDUSEALT (PC & (SIZEUSEALT -1))
 std::vector<std::vector<int8_t>>  use_alt_on_na;
+bool enable_use_alt=false;
 
 int8_t BIM=0;
 
@@ -101,7 +101,7 @@ public:
 
 
 
-// #define DBG
+#define DBG
 
 int TICK;// for the reset of the u counter
 
@@ -284,6 +284,7 @@ public:
             std::cout << std::dec << "   " << i
                       << std::setw(4) << " idx=" <<  GI.at(i)
                       << std::hex << std::setw(8) << " t=" << GTAG.at(i)
+                      << std::dec << " pred=" << (gtable.at(i).at(GI.at(i)).ctr>=0)
                       << std::endl;
 #endif
 	    }
@@ -321,11 +322,16 @@ public:
             bool Huse_alt_on_na =
                 (use_alt_on_na.at(index).at(HitBank > (NHIST / 3)) >= 0);
 
-            if ((!Huse_alt_on_na)
-                || (abs (2 * gtable.at(HitBank).at(GI.at(HitBank)).ctr + 1) > 1))
+            if (!enable_use_alt) {
                 tage_pred = LongestMatchPred;
-            else
-                tage_pred = alttaken;
+            }
+            else {
+                if ((!Huse_alt_on_na)
+                    || (abs (2 * gtable.at(HitBank).at(GI.at(HitBank)).ctr + 1) > 1))
+                    tage_pred = LongestMatchPred;
+                else
+                    tage_pred = alttaken;
+            }
 
 	    }
 	    else  {
@@ -347,7 +353,7 @@ public:
 	    return pred_taken;
 	}
 
-    void HistoryUpdate (uint32_t PC,
+    void HistoryUpdate (uint64_t PC,
                         uint16_t brtype,
                         bool taken,
                         uint32_t target,
@@ -436,14 +442,15 @@ public:
             int Penalty = 0;
             int NA = 0;
             for (int i = HitBank + A; i <= NHIST; i += 1)  {
-#ifdef DBG
-                std::cout << "Allocate, pc=" << std::hex << PC << std::dec
-                          << " bank=" << i
-                          << " idx=" << GI.at(i)
-                          << " tag=" << std::hex <<  GTAG.at(i)
-                          << std::endl;
-#endif
                 if (gtable.at(i).at(GI.at(i)).u == 0) {
+#ifdef DBG
+                    std::cout << "Allocate, pc=" << std::hex << PC << std::dec
+                              << " bank=" << i
+                              << " idx=" << GI.at(i)
+                              << " tag=" << std::hex <<  GTAG.at(i)
+                              << " actual=" << resolveDir
+                              << std::endl;
+#endif
                     gtable.at(i).at(GI.at(i)).tag = GTAG.at(i);
                     gtable.at(i).at(GI.at(i)).ctr = (resolveDir) ? 0 : -1;
                     NA++;
