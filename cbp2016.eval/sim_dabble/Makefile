@@ -44,13 +44,15 @@ OBJDIR := $(CBP_BASE)/bin
 SRC    := $(CBP_BASE)/sim
 VPATH  := $(SRC)
 
-LDLIBS   += -lboost_iostreams
+LDLIBS   += -lboost_iostreams -lsparta
 
-LDFLAGS += -L$(BOOST)/lib -Wl,-rpath $(BOOST)/lib
+LDFLAGS += -L$(BOOST)/lib -Wl,-rpath $(BOOST)/lib -L/home/anhdungn/devel/map/sparta/debug
 
 CPPFLAGS := -std=c++11 -O3 -Wall -std=c++11 -Wextra -Winline -Winit-self -Wno-sequence-point\
            -Wno-unused-function -Wno-inline -fPIC -W -Wcast-qual -Wpointer-arith -Woverloaded-virtual\
-           -I$(CBP_BASE) -I/usr/include -I/user/include/boost/ -I/usr/include/boost/iostreams/ -I/usr/include/boost/iostreams/device/
+           -I$(CBP_BASE) -I/usr/include -I/user/include/boost/ -I/usr/include/boost/iostreams/\
+           -I/usr/include/boost/iostreams/device/ \
+			-I /home/anhdungn/devel/map/sparta
 
 PROGRAMS := predictor
 

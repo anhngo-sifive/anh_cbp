@@ -281,9 +281,9 @@ public:
             GI.at(i) = gindex (PC, i, phist, ch_i);
             GTAG.at(i) = gtag (PC, i, ch_t.at(0), ch_t.at(1));
 #ifdef DBG
-            std::cout << std::dec << "   " << i
-                      << std::setw(4) << " idx=" <<  GI.at(i)
-                      << std::hex << std::setw(8) << " t=" << GTAG.at(i)
+            std::cout << std::dec << " -Pred bank=" << i
+                      << " idx=" <<  GI.at(i)
+                      << std::hex << " t=" << GTAG.at(i)
                       << std::dec << " pred=" << (gtable.at(i).at(GI.at(i)).ctr>=0)
                       << std::endl;
 #endif
@@ -383,10 +383,8 @@ public:
             ghist.at(Y & (HISTBUFFERLENGTH - 1)) = DIR;
             phr = (phr << 1) ^ PATHBIT;
             phr &= ((1ULL << PHISTWIDTH) - 1);
-            static int cnt=0;
-            ++cnt;
 #ifdef DBG
-            std::cout << std::dec << cnt << ": pc=" << std::hex << PC
+            std::cout << " updateHistory: pc=" << std::hex << PC
                       << " phist=" << std::setw(8) << phist
                       << " ghist=" <<  getGhistString(ghist, ptghist)
                       << std::endl;
@@ -396,9 +394,11 @@ public:
                 G.at(i).update (ghist, Y);
                 J.at(i).update (ghist, Y);
 #ifdef DBG
-                std::cout << "  " << std::dec << i << ".  c_i=" << std::hex << std::setw(8) << H.at(i).comp << std::endl;
-                std::cout << "  " << std::dec << i << ". c_t0=" << std::hex << std::setw(8) << G.at(i).comp << std::endl;
-                std::cout << "  " << std::dec << i << ". c_t1=" << std::hex << std::setw(8) << J.at(i).comp << std::endl;
+                std::cout << "  -FoldedHist bank=" << std::dec << i
+                          << " c_i="  << std::hex << H.at(i).comp
+                          << " c_t0=" << G.at(i).comp
+                          << " c_t1=" <<  J.at(i).comp
+                          << std::endl;
 
 #endif
             }
@@ -444,7 +444,7 @@ public:
             for (int i = HitBank + A; i <= NHIST; i += 1)  {
                 if (gtable.at(i).at(GI.at(i)).u == 0) {
 #ifdef DBG
-                    std::cout << "Allocate, pc=" << std::hex << PC << std::dec
+                    std::cout << " Tagged Allocate, pc=" << std::hex << PC << std::dec
                               << " bank=" << i
                               << " idx=" << GI.at(i)
                               << " tag=" << std::hex <<  GTAG.at(i)

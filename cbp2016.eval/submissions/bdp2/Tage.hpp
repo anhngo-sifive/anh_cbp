@@ -23,6 +23,7 @@ public:
          PredT init_pred);
     bool lookupPrediction(const uint64_t pc,
                           const GHR &ghr,
+                          const PHR &phr,
                           const bool is_indirect,
                           const bool enable_mallard_hash,
                           PredResult<PredT> &presult);
@@ -31,6 +32,11 @@ public:
                          const PredT actual_val);
 
     uint32_t getNumTaggedTables() const { return num_tagged_tables_; }
+    void logFoldedHist() const {
+        for(uint32_t bank=0; bank<num_tagged_tables_; ++bank) {
+            tagged_tbl_.at(bank)->logFoldedHist();
+        }
+    }
 
     void setDbgOstream(std::ostream &os);
     void updateFoldedHist(const tage::GHR &ghr);
@@ -53,7 +59,7 @@ protected:
                                   const PredT actual_val);
 
     // Allocate up to N entries per mispredict
-    void handleAllocate_(const PredResult<PredT> &presult, const PredT actual_val);
+    void handleAllocate_(const uint64_t pc, const PredResult<PredT> &presult, const PredT actual_val);
 
     void handleUpdatePrediction_(const uint64_t pc,
                                  const PredResult<PredT> &presult,
@@ -124,6 +130,7 @@ Tage<PredT>::Tage(const TageParams &params,
 template <typename PredT>
 bool Tage<PredT>::lookupPrediction(const uint64_t pc,
                                    const GHR &ghr,
+                                   const PHR &phr,
                                    const bool is_indirect,
                                    const bool enable_mallard_hash,
                                    PredResult<PredT> &presult)
@@ -132,10 +139,17 @@ bool Tage<PredT>::lookupPrediction(const uint64_t pc,
     TaggedTablePredResult<PredT> tagged_presult;
     int32_t longest_match_bank = -1;
 
+    if (dbg_ostream_) {
+        for (int32_t bank=0; bank<num_tagged_tables_ ; ++bank) {
+            tagged_tbl_[bank]->logIdxTag(pc, phr);
+        }
+    }
+
     // Longest history tagged-table look-up
     for (int32_t bank=(num_tagged_tables_ - 1); bank>=0; --bank) {
         const bool tag_matched  = tagged_tbl_[bank]->lookupPrediction(pc,
                                                                       ghr,
+                                                                      phr,
                                                                       is_indirect,
                                                                       enable_mallard_hash,
                                                                       tagged_presult);
@@ -156,6 +170,7 @@ bool Tage<PredT>::lookupPrediction(const uint64_t pc,
     for (int32_t bank=(longest_match_bank - 1); bank>=0; --bank) {
         const bool tag_matched  = tagged_tbl_[bank]->lookupPrediction(pc,
                                                                       ghr,
+                                                                      phr,
                                                                       is_indirect,
                                                                       enable_mallard_hash,
                                                                       tagged_presult);
@@ -199,7 +214,7 @@ void Tage<PredT>::updatePredictor(const uint64_t pc,
     bool need_allocate = determineNeedToAllocate_(pc, presult, actual_val);
 
     if (need_allocate) {
-        handleAllocate_(presult, actual_val);
+        handleAllocate_(pc, presult, actual_val);
     }
 
     handleUpdatePrediction_(pc, presult, actual_val);
@@ -275,7 +290,7 @@ bool Tage<PredT>::determineNeedToAllocate_(const uint64_t pc,
 
 // Allocate up to N entries per mispredict
 template <typename PredT>
-void Tage<PredT>::handleAllocate_(const PredResult<PredT> &presult, const PredT actual_val)
+void Tage<PredT>::handleAllocate_(const uint64_t pc, const PredResult<PredT> &presult, const PredT actual_val)
 {
     const auto longest_match_bank = presult.getLongestMatchBank();
     uint32_t num_no_allocate = 0;
@@ -286,6 +301,14 @@ void Tage<PredT>::handleAllocate_(const PredResult<PredT> &presult, const PredT 
         auto &tentry = tagged_tbl_.at(bank)->getEntry(saved_idx);
         if (tentry.getUsefulCounter().getValue() == 0) {
             tentry.reset(presult.getSavedTag(bank), presult.getSavedPos(bank), actual_val);
+            if (dbg_ostream_) {
+                *dbg_ostream_ << " Tagged Allocate, pc=" << std::hex << (pc<<1) << std::dec
+                              << " bank=" << (bank+1)
+                              << " idx=" << saved_idx
+                              << " tag=" << std::hex << presult.getSavedTag(bank)
+                              << " actual=" << actual_val
+                              << std::endl;
+            }
             ++num_allocate;
             if (num_allocate >= num_to_allocate_on_mispredict_) {
                 break;
@@ -333,6 +356,9 @@ void Tage<PredT>::handleUpdatePrediction_(const uint64_t pc,
                 const auto alt_idx   = presult.getSavedIdx(alt_bank);
                 auto &alt_tentry = tagged_tbl_.at(alt_bank)->getEntry(alt_idx);
                 alt_tentry.updatePredCounter(actual_val);
+                if (dbg_ostream_) {
+                    *dbg_ostream_ << " Alt ctrupdate bank=" << std::dec << (alt_bank+1) << " idx=" << alt_idx << std::endl;
+                }
             }
             else {
                 bimodal_tbl_->updatePredCounter(presult.getBimodalIdx(), actual_val);
@@ -343,6 +369,9 @@ void Tage<PredT>::handleUpdatePrediction_(const uint64_t pc,
         const auto longest_match_idx = presult.getSavedIdx(longest_match_bank);
         auto &longest_match_tentry = tagged_tbl_.at(longest_match_bank)->getEntry(longest_match_idx);
         longest_match_tentry.updatePredCounter(actual_val);
+        if (dbg_ostream_) {
+            *dbg_ostream_ << " Longest ctrupdate bank="<<  std::dec << (longest_match_bank+1) << " idx=" << longest_match_idx << std::endl;
+        }
 
         // 3. Reset 'useful' if hysteresis becomes weak
         if (  longest_match_tentry.isPredWeak() ) {
@@ -370,7 +399,7 @@ template <typename PredT>
 void Tage<PredT>::updateFoldedHist(const tage::GHR &ghr)
 {
     for(uint32_t bank=0; bank<num_tagged_tables_; ++bank) {
-                tagged_tbl_.at(bank)->updateFoldedHist(ghr);
+        tagged_tbl_.at(bank)->updateFoldedHist(ghr);
     }
 }
 

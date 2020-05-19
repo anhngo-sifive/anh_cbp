@@ -15,13 +15,10 @@ namespace tage {
             assert(length < (sizeof(phr_)*8));
         }
 
-        void addHistory(uint64_t path, uint32_t num_bits)
-        {
-            phr_ <<= num_bits;
-            phr_ += (path & ((1 <<num_bits) - 1));
+        void addHistory(uint64_t pc, uint32_t num_bits) {
+            phr_ = (phr_<<1) ^(pc&((1ULL<<num_bits)-1));
             phr_ &= length_mask_;
         }
-
         void addHistoryBit(bool new_bit)
         {
             phr_ <<= 1;

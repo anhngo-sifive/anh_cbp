@@ -10,6 +10,7 @@
 #include "TaggedTableEntry.hpp"
 #include "TaggedTablePredResult.hpp"
 #include "GHR.hpp"
+#include "PHR.hpp"
 
 namespace dabble {
 namespace tage {
@@ -30,9 +31,36 @@ namespace tage {
         void initialize(uint64_t initial_tag, uint32_t initial_pos, PredT initial_pred_val);
         bool lookupPrediction(const uint64_t PC,
                               const GHR &ghr,
+                              const PHR &phr,
                               const bool is_indirect,
                               const bool ghr_enable_mallard_hash,
                               TaggedTablePredResult<PredT> &presult) const;
+        void logIdxTag(const uint64_t PC, const PHR &phr) const    {
+            if (!dbg_ostream_) {
+                return;
+            }
+            auto idx = calcIdx_classic_(PC, phr);
+            auto tag = calcTag_classic_(PC);
+            auto entry = getEntry(idx);
+            auto pred = entry.getPred();
+            *dbg_ostream_ << std::dec << " -Pred bank=" << (bank_num_+1)
+                          << " idx=" <<  idx
+                          << std::hex << " t=" << tag
+                          << std::dec << " pred=" << pred
+                          << std::endl;
+
+        }
+        void logFoldedHist() const {
+            if (!dbg_ostream_) {
+                return;
+            }
+            *dbg_ostream_ << "  -FoldedHist bank=" << std::dec << (bank_num_+1)
+                          << " c_i=" << std::hex << folded_ghr_for_idx_.getValue()
+                          << " c_t0=" << folded_ghr_for_tag_0_.getValue()
+                          << " c_t1=" << std::hex << folded_ghr_for_tag_1_.getValue()
+                          << std::endl;
+        }
+
         void updateFoldedHist(const GHR &ghr);
         TaggedTableEntry<PredT> &getEntry(const uint32_t idx) { return tagged_tbl_.at(idx); }
         const TaggedTableEntry<PredT> &getEntry(const uint32_t idx) const;
@@ -58,8 +86,8 @@ namespace tage {
         uint64_t calcTag_mallard_(uint64_t PC,
                                   const GHR &ghr,
                                   uint32_t rotate_amount) const;
-        uint32_t calcIdx_classic_(uint64_t PC) const;
         uint64_t calcTag_classic_(uint64_t PC) const;
+        uint32_t calcIdx_classic_(uint64_t PC, const PHR &phr)  const;
         uint64_t getLsb_(const GHR::BitVector &bvect, uint32_t num_bits) const  {
             // XXX (PERF) extracting one bit a a time
             uint64_t lsb_bits=0;
@@ -76,6 +104,21 @@ namespace tage {
             val = (val >> rot_len) | (val << (val_len-rot_len));
             val &= mask;
         }
+
+        // the index functions for the tagged tables uses path history as in the OGEHL predictor
+        //F serves to mix path history: not very important impact
+        int hashPhr_(uint64_t phr, int phr_len, int bank) const
+        {
+            phr = phr & ((1 << phr_len) - 1);
+
+            const uint64_t phr_lower = (phr & ((1 << tbl_idx_num_bits_) - 1));
+            uint64_t phr_upper = (phr >> tbl_idx_num_bits_);
+            phr_upper = ((phr_upper << bank) & ((1 << tbl_idx_num_bits_) - 1)) + (phr_upper >> (tbl_idx_num_bits_ - bank));
+            phr = phr_lower ^ phr_upper;
+            phr = ((phr << bank) & ((1 << tbl_idx_num_bits_) - 1)) + (phr >> (tbl_idx_num_bits_ - bank));
+            return (phr);
+        }
+
 
         std::ostream *dbg_ostream_=nullptr; // Ostream for debugging/logging
 
@@ -142,6 +185,7 @@ namespace tage {
     template<typename PredT>
     bool TaggedTable<PredT>::lookupPrediction(const uint64_t PC,
                                               const GHR &ghr,
+                                              const PHR &phr,
                                               const bool is_indirect,
                                               const bool enable_mallard_hash,
                                               TaggedTablePredResult<PredT> &presult) const
@@ -162,7 +206,7 @@ namespace tage {
             calcTag_classic_(aligned_pc);
         const int32_t  idx = enable_mallard_hash ?
             calcIdx_mallard_(aligned_pc, ghr, rotate_amount) :
-            calcIdx_classic_(aligned_pc);
+            calcIdx_classic_(PC, phr);
 
         // Access table and determine if tag matched
         const auto &tentry = getEntry(idx);
@@ -172,19 +216,6 @@ namespace tage {
         const bool pos_matched = (tentry.getPos() == pos);
 
         presult.setPred(pred, is_weak_pred, idx, tag, pos);
-
-        if (dbg_ostream_) {
-            *dbg_ostream_ << "TaggedTable" << bank_num_
-                          << " pc=0x" << std::hex << PC << std::dec
-                          << " idx=" << idx
-                          << " pos=" << pos
-                          << " tag=0x" << std::hex << tag << std::dec
-                          << " pred=" << pred
-                          << " entry.tag=" <<  std::hex << tentry.getTag() << std::dec
-                          << " entry.pos=" << std::dec << tentry.getPos()
-                          << " matched=" << tag_matched
-                          << std::endl;
-        }
 
         return tag_matched && pos_matched;
     }
@@ -279,12 +310,17 @@ namespace tage {
         return hashPcAndGhr_(PC, ghr, tbl_tag_num_bits_, rotate_amount);
     }
 
+
     // Index computation--ful hash of PC, ghist and phist
     template<typename PredT>
-    uint32_t TaggedTable<PredT>::calcIdx_classic_(uint64_t PC)  const
+    uint32_t TaggedTable<PredT>::calcIdx_classic_(uint64_t PC, const PHR &phr)  const
     {
-        const uint64_t hashed_PC  = PC ^ (PC >> (abs (int32_t(tbl_idx_num_bits_) - int32_t(bank_num_)) + 1));
-        const uint32_t index      = hashed_PC ^ folded_ghr_for_idx_.getValue();
+
+	    int index;
+	    int phr_len = std::min(geometric_ghr_len_, phr.getLength());
+        index =
+            PC ^ (PC >> (abs (int32_t(tbl_idx_num_bits_) - int32_t(bank_num_+1)) + 1))
+            ^ folded_ghr_for_idx_.getValue() ^ hashPhr_(phr.getHistory(), phr_len, bank_num_+1);
 
         return (index & tbl_idx_mask_);
     }
@@ -298,5 +334,7 @@ namespace tage {
         const uint64_t tag = PC ^ folded_ghr_for_tag_0_.getValue() ^ (folded_ghr_for_tag_1_.getValue() << 1);
         return (tag & tbl_tag_mask_);
     }
+
+
 }; // namespace tage
 }; // namespace dabble

@@ -16,10 +16,10 @@ using namespace std;
 #include "bt9_reader.h"
 //#include "predictor.cc"
 #include "predictor.h"
-#include "../submissions/bdp/Bdp.hpp"
-#include "../submissions/bdp/GHR.hpp"
-#include "../submissions/bdp/PHR.hpp"
-#include "../submissions/bdp/BdpPredResult.hpp"
+#include "../submissions/bdp2/Bdp.hpp"
+#include "../submissions/bdp2/GHR.hpp"
+#include "../submissions/bdp2/PHR.hpp"
+#include "../submissions/bdp2/BdpPredResult.hpp"
 using namespace dabble;
 
 
@@ -40,12 +40,15 @@ uint32_t bdp_bimodal_tbl_size =                                4096;
 uint32_t bdp_bimodal_hys_num_bits =                               1;
 uint32_t bdp_bimodal_hys_frac =                                   1;
 uint32_t addr_num_bits =                                         20;
+uint32_t pos_num_bits =                                           0;
 
 uint32_t ghr_pc_bits_per_grain =                                 10;
 uint32_t ghr_tgt_bits_per_grain =                                10;
 uint32_t ghr_hist_bits_per_br =                                   7;
 bool     ghr_enable_mallard_hash =                             false;
 bool     ghr_dont_update_on_NT =                               false;
+uint32_t phr_hist_bits_per_br =                                   7;
+
 
 uint32_t bdp_num_tagged_tables = bdp_tagged_table_size.size();
 uint32_t addr_shift_amount = 1;
@@ -226,14 +229,12 @@ void updateGhrForConditional(uint64_t pc,
         bdp.updateFoldedHist(ghr);
 #if 1
         pc <<= 1;
-        phr.addHistory_cbp(pc);
-        static int cnt=0;
-        ++cnt;
-        std::cout << std::dec << cnt << ": pc=" << std::hex << pc
+        phr.addHistory(pc, phr_hist_bits_per_br);
+        std::cout << " updateHistory: pc=" << std::hex << pc
                   << " phist=" << std::setw(8) << phr.getHistory()
                   << " ghist=" <<  ghr.to_string()
                   << std::endl;
-        bdp.printFoldedHist();
+        bdp.logFoldedHist();
 #endif
     }
 }
@@ -268,8 +269,10 @@ int main(int argc, char* argv[]){
                             bdp_bimodal_tbl_size,
                             bdp_bimodal_hys_num_bits,
                             bdp_bimodal_hys_frac,
-                            addr_num_bits);
+                            addr_num_bits,
+                            pos_num_bits);
   bdp::Bdp bdp(bdp_params);
+  bdp.setDbgOstream(std::cout);
 
 
     PREDICTOR  *brpred = new PREDICTOR();  // this instantiates the predictor code
@@ -317,7 +320,7 @@ int main(int argc, char* argv[]){
           opType = BrClass2OpType(br_class);
           assert(opType != OPTYPE_ERROR);
 
-          pc = it->getSrcNode()->brVirtualAddr();
+          pc = (it->getSrcNode()->brVirtualAddr() & (~0x1ULL));
 
           actual_taken = it->getEdge()->isTakenPath();
           actual_target = it->getEdge()->brVirtualTarget();
@@ -327,7 +330,9 @@ int main(int argc, char* argv[]){
               bdp::PredResult bdp_presult{bdp_num_tagged_tables};
               const bool is_indirect = false;
               const auto shifted_pc  = (pc >> addr_shift_amount);
-              std::cout << "*** pc=" << std::hex << pc << std::endl;
+              static int cnt=0;
+              ++cnt;
+              std::cout << std::dec << cnt << " *** pc=" << std::hex << pc << std::endl;
               bdp.lookupPrediction(pc,
                                    ghr,
                                    phr,
@@ -346,7 +351,7 @@ int main(int argc, char* argv[]){
               int alt_idx = (alt >= 0) ? bdp_presult.getSavedIdx(alt) : 0;
               uint32_t alt_tag = (alt >= 0) ? bdp_presult.getSavedTag(alt) : 0;
               const bool mispred = predDir != actual_taken;
-              std::cout << "pc=" << std::hex << pc << std::dec
+              std::cout << " Prediction result. pc=" << std::hex << pc << std::dec
                         << " actual=" << actual_taken
                         << " pred=" << predDir
                         << " mispred=" << mispred

@@ -253,7 +253,7 @@ int main(int argc, char* argv[]){
           }
 
 
-          PC = it->getSrcNode()->brVirtualAddr();
+          PC = it->getSrcNode()->brVirtualAddr() & ~(0x1ULL);
 
           branchTaken = it->getEdge()->isTakenPath();
           branchTarget = it->getEdge()->brVirtualTarget();
@@ -303,13 +303,15 @@ int main(int argc, char* argv[]){
 
             bool predDir = false;
 #ifdef DBG
-            std::cout << "*** pc=" << std::hex << PC << std::endl;
+            static int cnt=0;
+            ++cnt;
+            std::cout << std::dec << cnt << " *** pc=" << std::hex << PC << std::endl;
 #endif
             predDir = brpred->GetPrediction(PC);
 
             const bool mispred = predDir != branchTaken;
 #ifdef DBG
-            std::cout << "pc=" << std::hex << PC << std::dec
+            std::cout << " Prediction result. pc=" << std::hex << PC << std::dec
                       << " actual=" << branchTaken
                       << " pred=" << predDir
                       << " mispred=" << mispred
