@@ -19,7 +19,7 @@ using namespace std;
 
 #define COUNTER     unsigned long long
 
-#define DBG
+//#define DBG
 
 void CheckHeartBeat(UINT64 numIter, UINT64 numMispred)
 {
@@ -261,6 +261,11 @@ int main(int argc, char* argv[]){
           //printf("PC: %llx type: %x T %d N %d outcome: %d", PC, (UINT32)opType, it->getSrcNode()->brObservedTakenCnt(), it->getSrcNode()->brObservedNotTakenCnt(), branchTaken);
 
 /************************************************************************************************************/
+#ifdef DBG
+          std::cout << "*** pc=" << std::hex << PC
+                    << " taken=" << branchTaken
+                    << std::endl;
+#endif
 
           if (opType == OPTYPE_ERROR) {
             if (it->getSrcNode()->brNodeIndex()) { //only fault if it isn't the first node in the graph (fake branch)
@@ -301,13 +306,8 @@ int main(int argc, char* argv[]){
 //ver2            }
 //ver2            //puts("");
 
-            bool predDir = false;
-#ifdef DBG
-            static int cnt=0;
-            ++cnt;
-            std::cout << std::dec << cnt << " *** pc=" << std::hex << PC << std::endl;
-#endif
-            predDir = brpred->GetPrediction(PC);
+              bool predDir = false;
+              predDir = brpred->GetPrediction(PC);
 
             const bool mispred = predDir != branchTaken;
 #ifdef DBG
@@ -345,7 +345,7 @@ int main(int argc, char* argv[]){
           }
           else if (br_class.conditionality == bt9::BrClass::Conditionality::UNCONDITIONAL) { // for predictors that want to track unconditional branches
             uncond_branch_instruction_counter++;
-            // brpred->TrackOtherInst(PC, opType, branchTaken, branchTarget);
+            brpred->TrackOtherInst(PC, opType, branchTaken, branchTarget);
           }
           else {
             fprintf(stderr, "CONDITIONALITY ERROR\n");

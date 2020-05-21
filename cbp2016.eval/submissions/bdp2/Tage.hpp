@@ -419,6 +419,7 @@ void Tage<PredT>::setDbgOstream(std::ostream &os) {
     for (uint32_t bank=0; bank<num_tagged_tables_; ++bank) {
         tagged_tbl_[bank]->setDbgOstream(os);
     }
+    bimodal_tbl_->setDbgOstream(os);
 }
 
 }; // namespace tage

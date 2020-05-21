@@ -96,7 +96,7 @@ public:
 
 
 
-#define DBG
+//#define DBG
 
 int TICK;// for the reset of the u counter
 
@@ -237,6 +237,7 @@ public:
     bool getbim ()
 	{
 	    BIM = (btable.at(BI).pred << 1) + (btable.at(BI >> HYSTSHIFT).hyst);
+        //std::cout << " Base idx=" << std::dec << BI << " pred=" << (btable.at(BI).pred > 0) << std::endl;
 	    return (btable.at(BI).pred > 0);
 	}
 
@@ -249,11 +250,11 @@ public:
 	    }
 	    else if (inter > 0)
             inter--;
-#ifdef DBG
-        std::cout << " Base ctrupdate idx=" << std::dec << BI << std::endl;
-#endif
 	    btable.at(BI).pred = inter >> 1;
 	    btable.at(BI >> HYSTSHIFT).hyst = (inter & 1);
+#ifdef DBG
+        std::cout << " Base ctrupdate idx=" << std::dec << BI << " act=" << Taken << " pred=" <<  (btable.at(BI).pred>0) << std::endl;
+#endif
 	};
 
     //just a simple pseudo random number generator: use available information
@@ -367,6 +368,11 @@ public:
 
 	    int T = ((PC) << 1) + taken;
 	    int PATH = PC;
+#ifdef DBG
+        std::cout << "UpdateGHR pc=" << std::hex << PC
+                  << " taken=" << taken
+                  << " T=" << T << " PATH=" << PATH << std::endl;
+#endif
 
 	    for (int t = 0; t < maxt; t++)   {
             bool DIR = (T & 1);
@@ -378,12 +384,7 @@ public:
             ghist.at(Y & (HISTBUFFERLENGTH - 1)) = DIR;
             phr = (phr << 1) ^ PATHBIT;
             phr &= ((1ULL << PHISTWIDTH) - 1);
-#ifdef DBG
-            std::cout << " updateHistory: pc=" << std::hex << PC
-                      << " phist=" << std::setw(8) << phist
-                      << " ghist=" <<  getGhistString(ghist, ptghist)
-                      << std::endl;
-#endif
+
             for (int i = 1; i <= NHIST; i++) {
                 H.at(i).update (ghist, Y);
                 G.at(i).update (ghist, Y);
@@ -397,7 +398,13 @@ public:
 
 #endif
             }
-	    }
+#ifdef DBG
+            std::cout << " updateHistory: pc=" << std::hex << PC
+                      << " phist=" << std::setw(8) << phist
+                      << " ghist=" <<  getGhistString(ghist, ptghist)
+                      << std::endl;
+#endif
+        }
 
         //END UPDATE  HISTORIES
 	}

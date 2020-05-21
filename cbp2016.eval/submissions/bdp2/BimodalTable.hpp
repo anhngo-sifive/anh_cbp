@@ -43,6 +43,9 @@ namespace tage {
             // Update the shared entry with new hysteresis
             hysteresis = bimodal_tbl_[idx].getHysteresis();
             bimodal_tbl_[idx&hys_frac_mask_].setHysteresis(hysteresis);
+            if (dbg_ostream_) {
+                *dbg_ostream_ << " Base ctrupdate idx=" << std::dec << idx << " act=" << actual_val << " pred=" <<  bimodal_tbl_.at(idx).getPred() << std::endl;
+            }
         }
 
         void lookupPrediction(const uint64_t PC,
@@ -54,6 +57,7 @@ namespace tage {
 
         BimodalTable(const BimodalTable&) = delete;
         BimodalTable& operator=(const BimodalTable&) = delete;
+        void setDbgOstream(std::ostream &os) { dbg_ostream_ = &os; }
 
     private:
 
@@ -62,6 +66,7 @@ namespace tage {
         const uint32_t tbl_size_mask_=0;
         const uint32_t hys_frac_mask_=0; ///< mask to determine shared hysteresis entry
         std::vector<PredCounter<PredT>> bimodal_tbl_;
+        std::ostream *dbg_ostream_=nullptr; // Ostream for debugging/logging
     }; // class BimodalTable
 }; // namespace tage
 }; // namespace dabble
