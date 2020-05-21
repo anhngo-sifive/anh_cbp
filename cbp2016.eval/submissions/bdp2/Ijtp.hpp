@@ -11,11 +11,16 @@ namespace ijtp
     {
     public:
         explicit Ijtp(const IjtpParams &ijtp_params) :
-            tage::Tage<uint64_t>(ijtp_params, initial_pred_)
-        {}
+            tage::Tage<uint64_t>(ijtp_params)
+        {
+            const uint64_t bimodal_init_pred = 0;
+            const uint32_t bimodal_init_hys = 0;
+            initializeBimodalTable(bimodal_init_pred, bimodal_init_hys);
 
-    private:
-        static const uint64_t initial_pred_ = 0;
+            const uint64_t tagged_init_pred = 0;
+            const uint32_t tagged_init_hys = 0;
+            initializeTaggedTables(tagged_init_pred, tagged_init_hys);
+        }
     }; // class Ijtp
 
 }; // namespace ijtp

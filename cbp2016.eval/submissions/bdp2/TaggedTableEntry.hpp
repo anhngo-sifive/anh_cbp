@@ -21,10 +21,11 @@ namespace tage {
 
         void reset(const uint64_t tag,
                    const uint32_t pos,
-                   const PredT &init_pred_val) {
+                   const PredT &init_pred_val,
+                   const uint32_t init_hys) {
             tag_ = tag;
             pos_ = pos;
-            pred_ctr_.reset(init_pred_val);
+            pred_ctr_.reset(init_pred_val, init_hys);
             useful_ctr_.resetToZero();
         }
 

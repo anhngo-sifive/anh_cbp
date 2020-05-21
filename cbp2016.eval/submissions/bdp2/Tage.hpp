@@ -19,8 +19,7 @@ template <typename PredT>
 class Tage
 {
 public:
-    Tage(const TageParams &params,
-         PredT init_pred);
+    Tage(const TageParams &params);
     bool lookupPrediction(const uint64_t pc,
                           const GHR &ghr,
                           const PHR &phr,
@@ -35,6 +34,18 @@ public:
     void logFoldedHist() const {
         for(uint32_t bank=0; bank<num_tagged_tables_; ++bank) {
             tagged_tbl_.at(bank)->logFoldedHist();
+        }
+    }
+
+    void initializeBimodalTable(PredT init_pred, uint32_t init_hys) {
+        bimodal_tbl_->initialize(init_pred, init_hys);
+    }
+
+    void initializeTaggedTables(PredT init_pred, uint32_t init_hys) {
+        const uint64_t init_tag=0;
+        const uint32_t init_pos=0;
+        for (uint32_t bank=0; bank<num_tagged_tables_; ++bank) {
+            tagged_tbl_.at(bank)->initialize(init_tag, init_pos, init_pred, init_hys);
         }
     }
 
@@ -91,8 +102,7 @@ protected:
 
 
 template <typename PredT>
-Tage<PredT>::Tage(const TageParams &params,
-                  const PredT init_pred) :
+Tage<PredT>::Tage(const TageParams &params) :
     num_tagged_tables_(params.tagged_table_size.size()),
     num_to_allocate_on_mispredict_(params.num_to_allocate_on_mispredict),
     useful_reset_threshold_(params.useful_reset_threshold),
@@ -109,10 +119,7 @@ Tage<PredT>::Tage(const TageParams &params,
     bimodal_tbl_.reset(new BimodalTable<PredT>(params.bimodal_tbl_size,
                                                params.bimodal_hys_num_bits,
                                                params.bimodal_hys_frac));
-    bimodal_tbl_->initialize(init_pred);
 
-    const uint64_t init_tag=0;
-    const uint32_t init_pos=0;
     tagged_tbl_.resize(num_tagged_tables_);
     for (uint32_t bank=0; bank<num_tagged_tables_; ++bank) {
         tagged_tbl_.at(bank).reset(new TaggedTable<PredT>(bank,
@@ -123,7 +130,6 @@ Tage<PredT>::Tage(const TageParams &params,
                                                           params.geometric_len.at(bank),
                                                           params.pc_num_bits,
                                                           params.pos_num_bits));
-        tagged_tbl_.at(bank)->initialize(init_tag, init_pos, init_pred);
     }
 }
 
@@ -140,7 +146,7 @@ bool Tage<PredT>::lookupPrediction(const uint64_t pc,
     int32_t longest_match_bank = -1;
 
     if (dbg_ostream_) {
-        for (int32_t bank=0; bank<num_tagged_tables_ ; ++bank) {
+        for (uint32_t bank=0; bank<num_tagged_tables_ ; ++bank) {
             tagged_tbl_[bank]->logIdxTag(pc, phr);
         }
     }
@@ -295,12 +301,16 @@ void Tage<PredT>::handleAllocate_(const uint64_t pc, const PredResult<PredT> &pr
     const auto longest_match_bank = presult.getLongestMatchBank();
     uint32_t num_no_allocate = 0;
     uint32_t num_allocate    = 0;
+    const uint32_t init_hys = 0;
     const uint32_t start_bank = (longest_match_bank + 1);
     for (uint32_t bank=start_bank; bank<num_tagged_tables_; ++bank) {
         const auto saved_idx = presult.getSavedIdx(bank);
         auto &tentry = tagged_tbl_.at(bank)->getEntry(saved_idx);
         if (tentry.getUsefulCounter().getValue() == 0) {
-            tentry.reset(presult.getSavedTag(bank), presult.getSavedPos(bank), actual_val);
+            tentry.reset(presult.getSavedTag(bank),
+                         presult.getSavedPos(bank),
+                         actual_val,
+                         init_hys);
             if (dbg_ostream_) {
                 *dbg_ostream_ << " Tagged Allocate, pc=" << std::hex << (pc<<1) << std::dec
                               << " bank=" << (bank+1)

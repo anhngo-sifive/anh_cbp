@@ -28,9 +28,9 @@ namespace tage {
             bimodal_tbl_.resize(tbl_size_, PredCounter<PredT>(hys_numbits));
         }
 
-        void initialize(PredT initial_pred_val) {
+        void initialize(PredT initial_pred_val, uint32_t init_hys) {
             for (uint32_t i=0; i<tbl_size_; ++i) {
-                bimodal_tbl_[i].reset(initial_pred_val);
+                bimodal_tbl_[i].reset(initial_pred_val, init_hys);
             }
         }
 
@@ -43,7 +43,6 @@ namespace tage {
             // Update the shared entry with new hysteresis
             hysteresis = bimodal_tbl_[idx].getHysteresis();
             bimodal_tbl_[idx&hys_frac_mask_].setHysteresis(hysteresis);
-            std::cout << " Base ctrupdate idx=" << std::dec << (idx&hys_frac_mask_) << std::endl;
         }
 
         void lookupPrediction(const uint64_t PC,

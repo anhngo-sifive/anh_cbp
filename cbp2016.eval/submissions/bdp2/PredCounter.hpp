@@ -22,9 +22,9 @@ namespace tage {
                           "Cannot support hysteresis_numbits=" << hysteresis_numbits);
         }
 
-        void reset(PredT init_pred_val) {
+        void reset(PredT init_pred_val, uint32_t init_hys) {
             pred_ = init_pred_val;
-            hysteresis_ = 0;
+            hysteresis_ = init_hys;
         }
 
         void update(PredT actual_val) {

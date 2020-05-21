@@ -28,7 +28,10 @@ namespace tage {
                     uint32_t pc_num_bits,
                     uint32_t pos_num_bits);
 
-        void initialize(uint64_t initial_tag, uint32_t initial_pos, PredT initial_pred_val);
+        void initialize(uint64_t initial_tag,
+                        uint32_t initial_pos,
+                        PredT initial_pred_val,
+                        uint32_t initial_hys);
         bool lookupPrediction(const uint64_t PC,
                               const GHR &ghr,
                               const PHR &phr,
@@ -113,9 +116,15 @@ namespace tage {
 
             const uint64_t phr_lower = (phr & ((1 << tbl_idx_num_bits_) - 1));
             uint64_t phr_upper = (phr >> tbl_idx_num_bits_);
+
+            // swapping the upper bits with the lower bits, around the 'bank' point
             phr_upper = ((phr_upper << bank) & ((1 << tbl_idx_num_bits_) - 1)) + (phr_upper >> (tbl_idx_num_bits_ - bank));
+
             phr = phr_lower ^ phr_upper;
+
+            // swapping the upper bits with the lower bits, around the 'bank' point
             phr = ((phr << bank) & ((1 << tbl_idx_num_bits_) - 1)) + (phr >> (tbl_idx_num_bits_ - bank));
+
             return (phr);
         }
 
@@ -176,10 +185,13 @@ namespace tage {
     }
 
     template<typename PredT>
-    void TaggedTable<PredT>::initialize(uint64_t initial_tag, uint32_t init_pos, PredT initial_pred_value)
+    void TaggedTable<PredT>::initialize(uint64_t init_tag,
+                                        uint32_t init_pos,
+                                        PredT    init_pred_value,
+                                        uint32_t init_hys)
     {
         for (uint32_t idx=0; idx<tbl_num_entries_; ++idx) {
-            getEntry(idx).reset(initial_tag, init_pos, initial_pred_value);
+            getEntry(idx).reset(init_tag, init_pos, init_pred_value, init_hys);
         }
     }
     template<typename PredT>

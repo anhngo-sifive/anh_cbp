@@ -11,11 +11,16 @@ namespace bdp
     {
     public:
         explicit Bdp(const BdpParams &bdp_params) :
-            tage::Tage<bool>(bdp_params, initial_pred_)
-        {}
+            tage::Tage<bool>(bdp_params)
+        {
+            const bool     bimodal_init_pred = false;
+            const uint32_t bimodal_init_hys = 1;
+            initializeBimodalTable(bimodal_init_pred, bimodal_init_hys);
 
-    private:
-        static const bool initial_pred_ = true;
+            const bool     tagged_init_pred = true;
+            const uint32_t tagged_init_hys = 0;
+            initializeTaggedTables(tagged_init_pred, tagged_init_hys);
+        }
     }; // class Bdp
 
 }; // namespace bdp

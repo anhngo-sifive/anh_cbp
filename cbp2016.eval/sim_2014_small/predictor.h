@@ -82,13 +82,8 @@ public:
 class bentry			// TAGE bimodal table entry
 {
 public:
-#if 0
     int8_t pred = 0;
     int8_t hyst = 1;
-#else
-    int8_t pred = 1;
-    int8_t hyst = 0;
-#endif
 };
 
 class gentry			// TAGE global table entry
