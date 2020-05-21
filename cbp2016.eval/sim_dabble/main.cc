@@ -239,6 +239,49 @@ void updateGhrForConditional(uint64_t pc,
     }
 }
 
+void updateGhr_classic_(uint64_t pc,
+                        uint16_t brtype,
+                        uint64_t tgt,
+                        bool     taken,
+                        tage::GHR      &ghr,
+                        tage::PHR      &phr,
+                        bdp::Bdp       &bdp)
+{
+        //special treatment for unconditional branchs;
+	    int maxt;
+	    if (brtype == OPTYPE_RET_COND || brtype == OPTYPE_JMP_DIRECT_COND || brtype == OPTYPE_JMP_INDIRECT_COND || brtype == OPTYPE_CALL_DIRECT_COND || brtype == OPTYPE_CALL_INDIRECT_COND)
+            maxt = 1;
+	    else
+            maxt = 4;
+
+	    int T = ((pc) << 1) + taken;
+	    int PATH = pc;
+        std::cout << "UpdateGHR pc=" << std::hex << pc
+                  << " taken=" << taken
+                  << " T=" << T << " PATH=" << PATH << std::endl;
+
+	    for (int t = 0; t < maxt; t++)   {
+            bool DIR = (T & 1);
+            T >>= 1;
+            int PATHBIT = (PATH & 127);
+            PATH >>= 1;
+
+            ghr.updateWithTaken(DIR);
+            bdp.updateFoldedHist(ghr);
+            phr.addHistory(PATHBIT, phr_hist_bits_per_br);
+#if 1
+            bdp.logFoldedHist();
+            std::cout << " updateHistory: pc=" << std::hex << pc
+                      << " phist=" << std::setw(8) << phr.getHistory()
+                      << " ghist=" <<  ghr.to_string()
+                      << std::endl;
+#endif
+	    }
+
+}
+
+
+
 
 // usage: predictor <trace>
 
@@ -325,14 +368,15 @@ int main(int argc, char* argv[]){
           actual_taken = it->getEdge()->isTakenPath();
           actual_target = it->getEdge()->brVirtualTarget();
 
+           std::cout << "*** pc=" << std::hex << pc
+                    << " taken=" << actual_taken
+                    << std::endl;
+
           if (br_class.conditionality == bt9::BrClass::Conditionality::CONDITIONAL) {
               bool predDir = false;
               bdp::PredResult bdp_presult{bdp_num_tagged_tables};
               const bool is_indirect = false;
               const auto shifted_pc  = (pc >> addr_shift_amount);
-              static int cnt=0;
-              ++cnt;
-              std::cout << std::dec << cnt << " *** pc=" << std::hex << pc << std::endl;
               bdp.lookupPrediction(pc,
                                    ghr,
                                    phr,
@@ -363,27 +407,47 @@ int main(int argc, char* argv[]){
              bdp.updatePredictor(shifted_pc,
                                   bdp_presult,
                                   actual_taken); // <-- bdp.3:  train tables
-             updateGhrForConditional(shifted_pc,
-                                      (actual_target>>addr_shift_amount),
-                                      actual_taken,
-                                      ghr,
-                                      phr,
-                                      bdp); // bdp.2 update GHR
-              if(predDir != actual_taken){
+             updateGhr_classic_(pc,
+                                opType,
+                                (actual_target>>addr_shift_amount),
+                                actual_taken,
+                                ghr,
+                                phr,
+                                bdp); // bdp.2 update GHR
+             if(predDir != actual_taken){
                   numMispred++; // update mispred stats
-              }
-              cond_branch_instruction_counter++;
+             }
+             cond_branch_instruction_counter++;
 
-              if (predDir) {
-                  ++ pred_taken;
-              }
-              else {
-                  ++ pred_ntaken;
-              }
+             if (predDir) {
+                 ++ pred_taken;
+             }
+             else {
+                 ++ pred_ntaken;
+             }
           }
           else if (br_class.conditionality == bt9::BrClass::Conditionality::UNCONDITIONAL) { // for predictors that want to track unconditional branches
               uncond_branch_instruction_counter++;
-              //brpred->TrackOtherInst(pc, opType, actual_taken, actual_target);
+              switch (opType)                  {
+              case    OPTYPE_RET_UNCOND:
+              case    OPTYPE_JMP_DIRECT_UNCOND:
+              case    OPTYPE_JMP_INDIRECT_UNCOND:
+              case    OPTYPE_CALL_DIRECT_UNCOND:
+              case    OPTYPE_CALL_INDIRECT_UNCOND: {
+                  bool taken = true;
+                  updateGhr_classic_(pc,
+                                     opType,
+                                     (actual_target>>addr_shift_amount),
+                                     taken,
+                                     ghr,
+                                     phr,
+                                     bdp); // bdp.2 update GHR
+              }
+                  break;
+
+
+              default:;
+              }
           }
           else {
               fprintf(stderr, "CONDITIONALITY ERROR\n");

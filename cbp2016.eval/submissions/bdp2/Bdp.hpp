@@ -14,7 +14,7 @@ namespace bdp
             tage::Tage<bool>(bdp_params)
         {
             const bool     bimodal_init_pred = false;
-            const uint32_t bimodal_init_hys = 1;
+            const uint32_t bimodal_init_hys = 0;
             initializeBimodalTable(bimodal_init_pred, bimodal_init_hys);
 
             const bool     tagged_init_pred = true;
