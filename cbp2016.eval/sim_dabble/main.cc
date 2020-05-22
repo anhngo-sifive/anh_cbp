@@ -261,7 +261,6 @@ void updateGhr_classic_(uint64_t pc,
                   << " taken=" << taken
                   << " T=" << T << " PATH=" << PATH << std::endl;
 #endif
-
 	    for (int t = 0; t < maxt; t++)   {
             bool DIR = (T & 1);
             T >>= 1;
@@ -377,7 +376,6 @@ int main(int argc, char* argv[]){
                     << " taken=" << actual_taken
                     << std::endl;
 #endif
-
           if (br_class.conditionality == bt9::BrClass::Conditionality::CONDITIONAL) {
               bool predDir = false;
               bdp::PredResult bdp_presult{bdp_num_tagged_tables};
